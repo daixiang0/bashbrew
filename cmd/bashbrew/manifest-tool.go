@@ -7,7 +7,7 @@ import (
 	"os/exec"
 )
 
-func manifestToolPushFromSpec(yamlSpec string) error {
+func manifestToolPushFromSpec(yamlSpec, username, password string) error {
 	yamlFile, err := ioutil.TempFile("", "bashbrew-manifest-tool-yaml-")
 	if err != nil {
 		return err
@@ -21,7 +21,7 @@ func manifestToolPushFromSpec(yamlSpec string) error {
 		return err
 	}
 
-	args := []string{"push", "from-spec", "--ignore-missing", yamlFile.Name()}
+	args := []string{"--username", username, "--password", password, "push", "from-spec", "--ignore-missing", yamlFile.Name()}
 	if debugFlag {
 		args = append([]string{"--debug"}, args...)
 		fmt.Printf("$ manifest-tool %q\n", args)

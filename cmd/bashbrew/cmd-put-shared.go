@@ -15,7 +15,7 @@ import (
 
 var errPutShared404 = fmt.Errorf("nothing to push")
 
-func entriesToManifestToolYaml(singleArch bool, r Repo, entries ...*manifest.Manifest2822Entry) (string, []string, error) {
+func entriesToManifestToolYaml(singleArch bool, r Repo, username, password string, entries ...*manifest.Manifest2822Entry) (string, []string, error) {
 	yaml := ""
 	remoteDigests := []string{}
 	entryIdentifiers := []string{}
@@ -46,7 +46,7 @@ func entriesToManifestToolYaml(singleArch bool, r Repo, entries ...*manifest.Man
 			// keep track of how many images we expect to push successfully in this manifest list (and what their manifest digests are)
 			// for non-manifest-list tags, this will be exactly 1 and for failed lookups it'll be 0
 			// (and if one of _these_ tags is a manifest list, we've goofed somewhere)
-			archImageDigests := fetchRegistryManiestListDigests(archImage)
+			archImageDigests := fetchRegistryManiestListDigests(archImage, username, password)
 			if len(archImageDigests) != 1 {
 				fmt.Fprintf(os.Stderr, "warning: expected 1 image for %q; got %d\n", archImage, len(archImageDigests))
 			}
@@ -91,12 +91,18 @@ func cmdPutShared(c *cli.Context) error {
 	targetNamespace := c.String("target-namespace")
 	force := c.Bool("force")
 	singleArch := c.Bool("single-arch")
+	username := c.String("username")
+	password := c.String("password")
 
 	if targetNamespace == "" {
 		targetNamespace = namespace
 	}
 	if targetNamespace == "" {
 		return fmt.Errorf(`either "--target-namespace" or "--namespace" is a required flag for "put-shared"`)
+	}
+
+	if username == "" || password == "" {
+		return fmt.Errorf(`both "--username" and "--namespace" are required for "put-shared"`)
 	}
 
 	for _, repo := range repos {
@@ -134,7 +140,7 @@ func cmdPutShared(c *cli.Context) error {
 
 		failed := []string{}
 		for _, group := range sharedTagGroups {
-			yaml, expectedRemoteDigests, err := entriesToManifestToolYaml(singleArch, *r, group.Entries...)
+			yaml, expectedRemoteDigests, err := entriesToManifestToolYaml(singleArch, *r, username, password, group.Entries...)
 			if err == errPutShared404 {
 				fmt.Fprintf(os.Stderr, "skipping %s (nothing to push)\n", fmt.Sprintf("%s:%s", targetRepo, group.SharedTags[0]))
 				continue
@@ -151,7 +157,7 @@ func cmdPutShared(c *cli.Context) error {
 			for _, tag := range group.SharedTags {
 				image := fmt.Sprintf("%s:%s", targetRepo, tag)
 				if !force {
-					remoteDigests := fetchRegistryManiestListDigests(image)
+					remoteDigests := fetchRegistryManiestListDigests(image, username, password)
 					if len(expectedRemoteDigests) == 0 && remoteDigests == nil {
 						// https://github.com/golang/go/issues/12918 ...
 						remoteDigests = []string{}
@@ -173,7 +179,7 @@ func cmdPutShared(c *cli.Context) error {
 			fmt.Printf("Putting %s\n", groupIdentifier)
 			if !dryRun {
 				tagYaml := tagsToManifestToolYaml(targetRepo, tagsToPush...) + yaml
-				if err := manifestToolPushFromSpec(tagYaml); err != nil {
+				if err := manifestToolPushFromSpec(tagYaml, username, password); err != nil {
 					fmt.Fprintf(os.Stderr, "warning: failed putting %s, skipping (collecting errors)\n", groupIdentifier)
 					failed = append(failed, fmt.Sprintf("- %s: %v", groupIdentifier, err))
 					continue

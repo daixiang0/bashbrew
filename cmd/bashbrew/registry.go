@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"net/url"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/remotes"
 	dockerremote "github.com/containerd/containerd/remotes/docker"
+	"github.com/containerd/containerd/remotes/docker/config"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
@@ -17,10 +19,10 @@ var registryImageIdCache = map[string]string{}
 
 // assumes the provided image name is NOT a manifest list (used for testing whether we need to "bashbrew push" or whether the remote image is already up-to-date)
 // this does NOT handle authentication, and will return the empty string for repositories which require it (causing "bashbrew push" to simply shell out to "docker push" which will handle authentication appropriately)
-func fetchRegistryImageId(image string) string {
+func fetchRegistryImageId(image, username, password string) string {
 	ctx := context.Background()
 
-	ref, resolver, err := fetchRegistryResolveHelper(image)
+	ref, resolver, err := fetchRegistryResolveHelper(image, username, password)
 	if err != nil {
 		return ""
 	}
@@ -64,10 +66,10 @@ func fetchRegistryImageId(image string) string {
 var registryManifestListCache = map[string][]string{}
 
 // returns a list of manifest list element digests for the given image name (which might be just one entry, if it's not a manifest list)
-func fetchRegistryManiestListDigests(image string) []string {
+func fetchRegistryManiestListDigests(image, username, password string) []string {
 	ctx := context.Background()
 
-	ref, resolver, err := fetchRegistryResolveHelper(image)
+	ref, resolver, err := fetchRegistryResolveHelper(image, username, password)
 	if err != nil {
 		return nil
 	}
@@ -117,7 +119,7 @@ func fetchRegistryManiestListDigests(image string) []string {
 	return digests
 }
 
-func fetchRegistryResolveHelper(image string) (string, remotes.Resolver, error) {
+func fetchRegistryResolveHelper(image, username, password string) (string, remotes.Resolver, error) {
 	ref, err := docker.ParseAnyReference(image)
 	if err != nil {
 		return "", nil, err
@@ -127,7 +129,20 @@ func fetchRegistryResolveHelper(image string) (string, remotes.Resolver, error) 
 		namedRef = docker.TagNameOnly(namedRef)
 		ref = namedRef
 	}
-	return ref.String(), dockerremote.NewResolver(dockerremote.ResolverOptions{
+
+	ctx := context.TODO()
+	hosts := config.ConfigureHosts(ctx, config.HostOptions{
+		Credentials: func(host string) (string, string, error) {
+			// If host doesn't match...
+			// Only one host
+			return username, password, nil
+		},
+		DefaultTLS: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	})
+	resolver := dockerremote.NewResolver(dockerremote.ResolverOptions{
+		Hosts: hosts,
 		Host: func(host string) (string, error) {
 			if host == "docker.io" {
 				if publicProxy := os.Getenv("DOCKERHUB_PUBLIC_PROXY"); publicProxy != "" {
@@ -141,5 +156,6 @@ func fetchRegistryResolveHelper(image string) (string, remotes.Resolver, error) 
 			}
 			return host, nil
 		},
-	}), nil
+	})
+	return ref.String(), resolver, nil
 }

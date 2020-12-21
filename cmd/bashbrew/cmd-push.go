@@ -47,7 +47,7 @@ func cmdPush(c *cli.Context) error {
 
 				if !force {
 					localImageId, _ := dockerInspect("{{.Id}}", tag)
-					registryImageId := fetchRegistryImageId(tag)
+					registryImageId := fetchRegistryImageId(tag, "", "")
 					if registryImageId != "" && localImageId == registryImageId {
 						fmt.Fprintf(os.Stderr, "skipping %s (remote image matches local)\n", tag)
 						continue

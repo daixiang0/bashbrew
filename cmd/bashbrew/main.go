@@ -294,6 +294,18 @@ func main() {
 					Name:  "single-arch",
 					Usage: `only act on the current architecture (for pushing "amd64/hello-world:latest", for example)`,
 				},
+				cli.StringFlag{
+					Name:        "username",
+					Usage:       "the username of docker registry(REGISTRY_USRNAME)",
+					EnvVar:      "REGISTRY_USRNAME",
+					Required:    true,
+				},
+				cli.StringFlag{
+					Name:        "password",
+					Usage:       "the password of docker registry, (REGISTRY_PASSWORD)",
+					EnvVar:      "REGISTRY_password",
+					Required:    true,
+				},
 			},
 			Before: subcommandBeforeFactory("put-shared"),
 			Action: cmdPutShared,
