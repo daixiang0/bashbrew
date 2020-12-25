@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path"
@@ -237,11 +236,23 @@ func (r Repo) dockerBuildUniqueBits(entry *manifest.Manifest2822Entry) ([]string
 	return uniqueBits, nil
 }
 
-func dockerBuild(tag string, file string, context io.Reader) error {
-	args := []string{"build", "-t", tag, "-f", file, "--rm", "--force-rm"}
-	args = append(args, "-")
+func dockerBuild(tag, file, tmpPath string) error {
+	tmpDir := "/root/.cache/bashbrew/tar"
+	sedString := fmt.Sprintf(`/^FROM scratch/! s#^\(FROM\) \(.\)#\1 %s/\2#`, "159.138.0.63:30003/library")
+	updateCmd := []string{"-c", fmt.Sprintf("mkdir -p %s; tar xf %s -C %s && sed -i \"%s\" %s/%s",
+		tmpDir, tmpPath, tmpDir, sedString, tmpDir, file)}
+	_, err := exec.Command("bash", updateCmd...).Output()
+	if err != nil {
+		if ee, ok := err.(*exec.ExitError); ok {
+			return fmt.Errorf("%v\ncommand: update tar\n%s", ee, string(ee.Stderr))
+		}
+	}
+	defer func() {
+		_, _ = exec.Command("rm", "-rf", tmpDir).Output()
+	}()
+
+	args := []string{"build", "-t", tag, "-f", tmpDir + "/" + file, "--rm", "--force-rm", tmpDir}
 	cmd := exec.Command("docker", args...)
-	cmd.Stdin = context
 	if debugFlag {
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr

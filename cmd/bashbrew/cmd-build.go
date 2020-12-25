@@ -89,7 +89,6 @@ func cmdBuild(c *cli.Context) error {
 					if err != nil {
 						return cli.NewMultiError(fmt.Errorf(`failed generating git archive for %q (tags %q)`, r.RepoName, entry.TagsString()), err)
 					}
-					defer archive.Close()
 
 					// TODO use "meta.StageNames" to do "docker build --target" so we can tag intermediate stages too for cache (streaming "git archive" directly to "docker build" makes that a little hard to accomplish without re-streaming)
 
@@ -97,7 +96,6 @@ func cmdBuild(c *cli.Context) error {
 					if err != nil {
 						return cli.NewMultiError(fmt.Errorf(`failed building %q (tags %q)`, r.RepoName, entry.TagsString()), err)
 					}
-					archive.Close() // be sure this happens sooner rather than later (defer might take a while, and we want to reap zombies more aggressively)
 				}
 			} else {
 				fmt.Printf("Using %s (%s)\n", cacheTag, r.EntryIdentifier(entry))
