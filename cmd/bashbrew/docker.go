@@ -13,8 +13,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/urfave/cli"
 	"github.com/docker-library/bashbrew/manifest"
+	"github.com/urfave/cli"
 )
 
 type dockerfileMetadata struct {
@@ -295,5 +295,6 @@ func dockerPull(tag string) error {
 			return fmt.Errorf("%v\ncommand: docker pull %q\n%s", ee, tag, string(ee.Stderr))
 		}
 	}
-	return err
+
+	return dockerTag(tag, "159.138.0.63:30003/library/"+tag)
 }
