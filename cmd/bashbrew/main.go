@@ -23,6 +23,7 @@ var (
 
 	arch                 string
 	namespace            string
+	hubAddress           string
 	constraints          []string
 	exclusiveConstraints bool
 
@@ -99,6 +100,11 @@ func main() {
 			EnvVar: flagEnvVars["namespace"],
 			Usage:  "a repo namespace to act upon/in",
 		},
+		cli.StringFlag{
+			Name:   "hub-address",
+			EnvVar: flagEnvVars["hub-address"],
+			Usage:  "the hub address, like 127.0.0.1:30000",
+		},
 		cli.StringSliceFlag{
 			Name:   "constraint",
 			EnvVar: flagEnvVars["constraint"],
@@ -165,6 +171,7 @@ func main() {
 			namespace = c.GlobalString("namespace")
 			constraints = c.GlobalStringSlice("constraint")
 			exclusiveConstraints = c.GlobalBool("exclusive-constraints")
+			hubAddress = c.GlobalString("hub-address")
 
 			archNamespaces = map[string]string{}
 			for _, archMapping := range c.GlobalStringSlice("arch-namespace") {
@@ -295,16 +302,16 @@ func main() {
 					Usage: `only act on the current architecture (for pushing "amd64/hello-world:latest", for example)`,
 				},
 				cli.StringFlag{
-					Name:        "username",
-					Usage:       "the username of docker registry(REGISTRY_USRNAME)",
-					EnvVar:      "REGISTRY_USRNAME",
-					Required:    true,
+					Name:     "username",
+					Usage:    "the username of docker registry(REGISTRY_USRNAME)",
+					EnvVar:   "REGISTRY_USRNAME",
+					Required: true,
 				},
 				cli.StringFlag{
-					Name:        "password",
-					Usage:       "the password of docker registry, (REGISTRY_PASSWORD)",
-					EnvVar:      "REGISTRY_password",
-					Required:    true,
+					Name:     "password",
+					Usage:    "the password of docker registry, (REGISTRY_PASSWORD)",
+					EnvVar:   "REGISTRY_password",
+					Required: true,
 				},
 			},
 			Before: subcommandBeforeFactory("put-shared"),

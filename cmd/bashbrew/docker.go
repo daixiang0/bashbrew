@@ -238,7 +238,7 @@ func (r Repo) dockerBuildUniqueBits(entry *manifest.Manifest2822Entry) ([]string
 
 func dockerBuild(tag, file, tmpPath string) error {
 	tmpDir := "/root/.cache/bashbrew/tar"
-	sedString := fmt.Sprintf(`/^FROM scratch/! s#^\(FROM\) \(.\)#\1 %s/\2#`, "159.138.0.63:30003/library")
+	sedString := fmt.Sprintf(`/^FROM scratch/! s#^\(FROM\) \(.\)#\1 %s/library/\2#`, hubAddress)
 	updateCmd := []string{"-c", fmt.Sprintf("mkdir -p %s; tar xf %s -C %s && sed -i \"%s\" %s/%s",
 		tmpDir, tmpPath, tmpDir, sedString, tmpDir, file)}
 	_, err := exec.Command("bash", updateCmd...).Output()
@@ -307,5 +307,5 @@ func dockerPull(tag string) error {
 		}
 	}
 
-	return dockerTag(tag, "159.138.0.63:30003/library/"+tag)
+	return dockerTag(tag, hubAddress+"/library/"+tag)
 }
